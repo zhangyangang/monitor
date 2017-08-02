@@ -1,7 +1,9 @@
 #!/usr/bin/env python
 
 import json
+
 from pynvml import *
+
 
 nvmlInit()
 
