@@ -23,9 +23,18 @@ for i in range(deviceCount):
 
   util = call(nvmlDeviceGetUtilizationRates, handle)
   mem = call(nvmlDeviceGetMemoryInfo, handle)
+  pci = call(nvmlDeviceGetPciInfo, handle)
 
   result['devices'].append({
     'model': call(nvmlDeviceGetName, handle),
+    'pci': {
+      'bus': pci.bus,
+      'bus_id': pci.busId,
+      'device': pci.device,
+      'domain': pci.domain,
+      'pci_device_id': pci.pciDeviceId,
+      'pci_sub_system_id': pci.pciSubSystemId,
+    },
     'memory': {
       'free': mem.free,
       'total': mem.total,
