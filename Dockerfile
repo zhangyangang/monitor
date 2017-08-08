@@ -11,4 +11,5 @@ RUN curl -sSO https://bootstrap.pypa.io/get-pip.py && \
 COPY requirements.txt /app/requirements.txt
 RUN pip install -r /app/requirements.txt
 
-COPY collect.py /app/collect.py
+COPY . /app/
+CMD python3 /app/monitor.py

@@ -4,6 +4,8 @@ import json
 
 from pynvml import *
 
+# from https://github.com/NVIDIA/nvidia-docker/wiki/GPU-isolation
+# "If the device minor number is N, the device file is simply /dev/nvidiaN"
 
 nvmlInit()
 

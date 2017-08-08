@@ -1,0 +1,39 @@
+apiVersion: extensions/v1beta1
+kind: DaemonSet
+metadata:
+  name: riseml-monitor
+  namespace: riseml
+spec:
+  template:
+    metadata:
+      labels:
+        name: riseml-monitor
+    spec:
+      containers:
+      - name: monitor
+        image: quay.io/riseml/monitoring
+        command: ["/usr/bin/python3"]
+        args: ["/app/monitor.py"]
+        resources:
+          limits:
+            memory: 200Mi
+          requests:
+            cpu: 100m
+            memory: 200Mi
+        env:
+        - name: NODENAME
+          valueFrom:
+            fieldRef:
+              fieldPath: spec.nodeName
+        volumeMounts:
+        - name: dev-monitoring
+          mountPath: /app
+        - name: docker-sock 
+          mountPath: /var/run/docker.sock
+      volumes:
+      - name: dev-monitoring
+        hostPath:
+          path: /tmp/dev/monitoring
+      - name: docker-sock 
+        hostPath: 
+          path: /var/run/docker.sock
