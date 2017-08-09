@@ -1,59 +1,105 @@
 import json
 import time
+import queue
 import docker
 import logging
 logger = logging.getLogger(__name__)
 import threading
+from pynvml import *
+import re
 
 docker_client = docker.from_env(version="auto", timeout=5)
 current_threads = dict()
 
+
+nvmlInit()
+
+
+def call(func, *args, **kwargs):
+  try:
+    return func(*args, **kwargs)
+  except NVMLError_NotSupported:
+    pass
+
+
+def get_versions():
+    return {
+      'driver_version': call(nvmlSystemGetDriverVersion).decode(),
+      'nvml_version': call(nvmlSystemGetNVMLVersion).decode()}
+
+
+def get_devices():
+    devices = {}
+    num_devices = nvmlDeviceGetCount()
+    for i in range(num_devices):
+        handle = nvmlDeviceGetHandleByIndex(i)
+        pci = call(nvmlDeviceGetPciInfo, handle)
+        minor = call(nvmlDeviceGetMinorNumber, handle)
+        name = call(nvmlDeviceGetName, handle).decode()
+        devices[minor] = {'name': name, 'handle': handle}
+    return devices
+
+
+devices = get_devices()
+
+
+def get_device_stats(handle):
+    util = call(nvmlDeviceGetUtilizationRates, handle)
+    mem = call(nvmlDeviceGetMemoryInfo, handle)
+    return {
+        'temperature': call(nvmlDeviceGetTemperature, handle, NVML_TEMPERATURE_GPU),
+        'gpu_utilization': util.gpu,
+        'mem_free': mem.free,
+        'mem_total': mem.total,
+        'mem_used': mem.used,
+        'mem_utilization': util.memory,
+        'fan_speed': call(nvmlDeviceGetFanSpeed, handle)}
+   
+
+
 class ContainerMonitor(threading.Thread):
     
-    def __init__(self, container_id, stats_queue):
+    def __init__(self, monitors, stats_queue):
         super(ContainerMonitor, self).__init__()
-        self.container = docker_client.containers.get(container_id)
+        self.monitors = monitors
         self.stop = False
         self.stats_queue = stats_queue
+        self.daemon = True
         
 
     def run(self):
-        logger.info("Start monitoring container %s" % self.container.id)
-        stats = self.container.stats(decode=True, stream=True)
-        previous_cpu = 0.0
-        previous_system = 0.0
-        for s in stats:
-            if self.stop:
-                logger.info("Stopped monitoring container %s" % self.container.id)
-                break
-            previous_cpu = s['precpu_stats']['cpu_usage']['total_usage']
-            previous_system = s['precpu_stats']['system_cpu_usage']
-            cpu_percent, percpu_percent = calculate_cpu_percent(previous_cpu, previous_system, s)
-            memory_usage = s['memory_stats']['usage']
-            memory_limit = s['memory_stats']['limit']
-            logger.info("%s: %s %s %s %s" % (self.container.id, cpu_percent, memory_usage, memory_limit, percpu_percent))
-
-
-# according to: https://github.com/moby/moby/blob/eb131c5383db8cac633919f82abad86c99bffbe5/cli/command/container/stats_helpers.go#L175-L188
-def calculate_cpu_percent(previous_cpu, previous_system, s):
-    cpu_percent = 0.0
-    num_cpus = len(s['cpu_stats']['cpu_usage']['percpu_usage'])
-    percpu_percent = [0.0 for _ in range(num_cpus)]
-    total_usage = float(s['cpu_stats']['cpu_usage']['total_usage'])
-    cpu_delta = total_usage - previous_cpu
-    system_delta = float(s['cpu_stats']['system_cpu_usage']) - previous_system
-    if system_delta > 0 and cpu_delta > 0:
-        cpu_percent = (cpu_delta / system_delta) * float(num_cpus) * 100.0
-        percpu_percent = [percpu / total_usage * cpu_percent for percpu in s['cpu_stats']['cpu_usage']['percpu_usage']]
-    return cpu_percent, percpu_percent
+        while True:
+            time.sleep(1)
+            for gpu_m, (c_id, gpu_in_c) in self.monitors.items():
+               handle = devices[gpu_m]['handle']
+               stats = get_device_stats(handle)
+               print(c_id, gpu_in_c, stats)
 
 
 def stop_container_monitors(container_ids):
     for c_id in container_ids:
-        if c_id in current_threads:
-            current_threads[c_id].stop = True
-        else:
-            logger.warn("Tried stopping non-existent container monitor: %s " % c_id)
+        gpus = get_container_gpus(c_id)
+        for gpu_m, gpu_in_c in gpus:
+            if gpu_m in monitors:
+                del monitors[gpu_m]
+            else:
+                logger.warn("Tried stopping non-existent container monitor: %s " % c_id)
+
+
+def get_container_gpus(container_id):
+    gpus = []
+    devices = docker_client.api.inspect_container(container_id)['HostConfig']['Devices']
+    for dev in devices:
+        if re.match(r'/dev/nvidia[0-9]+', dev['PathOnHost']):
+            gpus.append((int(dev['PathOnHost'][len('/dev/nvidia'):]), dev['PathInContainer']))
+    return gpus
+
+
+
+monitors = {}
+container_stats = queue.Queue()
+monitor = ContainerMonitor(monitors, container_stats)
+monitor.start()
 
 
 def monitor_containers(container_ids, container_stats, stop_others=False):
@@ -63,18 +109,17 @@ def monitor_containers(container_ids, container_stats, stop_others=False):
             o.stop = True
         current_threads.clear()
     for c_id in container_ids:
-        if c_id not in current_threads:
-            monitor = ContainerMonitor(c_id, container_stats)
-            monitor.start()
-            current_threads[c_id] = monitor
+        gpus = get_container_gpus(c_id)
+        for gpu_m, gpu_in_c in gpus:
+            if gpu_m not in monitors:
+                monitors[gpu_m] = (c_id, gpu_in_c)
 
 
 if __name__ == '__main__':
     import queue
     import sys
+    print(get_versions())
     logging.basicConfig(stream=sys.stdout, level=logging.INFO)
-    container_stats = queue.Queue()
-    print(len(sys.argv))
     if len(sys.argv) == 2:
         containers = [sys.argv[1]]
     else:
