@@ -11,6 +11,8 @@ spec:
     spec:
       containers:
       - name: monitor
+        securityContext:
+          privileged: true      
         image: quay.io/riseml/monitoring
         command: ["/usr/bin/python3"]
         args: ["/app/monitor.py"]

@@ -1,4 +1,4 @@
-FROM nvidia/cuda:latest
+FROM ubuntu:16.04
 ENV DEBIAN_FRONTEND noninteractive
 
 RUN apt-get -y update && \
@@ -12,4 +12,4 @@ COPY requirements.txt /app/requirements.txt
 RUN pip install -r /app/requirements.txt
 
 COPY . /app/
-CMD python3 /app/monitor.py
+CMD python3 /app/docker_stats.py
