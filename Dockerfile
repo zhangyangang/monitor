@@ -12,4 +12,4 @@ COPY requirements.txt /app/requirements.txt
 RUN pip install -r /app/requirements.txt
 
 COPY . /app/
-CMD python3 /app/docker_stats.py
+CMD python3 /app/docker_stats.py 448a4842764cd90ed46eb3c4adcfea1e597be4bdbd1344057dcd566eeb8da15a
