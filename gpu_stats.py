@@ -3,76 +3,37 @@ import time
 import queue
 import docker
 import logging
-logger = logging.getLogger(__name__)
 import threading
-from pynvml import *
 import re
+import nvml
 
+logger = logging.getLogger(__name__)
 docker_client = docker.from_env(version="auto", timeout=5)
-current_threads = dict()
+monitors = {}
+devices = nvml.get_devices()
 
 
-nvmlInit()
+def start(container_stats):
+    global monitors
+    monitor = GPUMonitor(monitors, container_stats)
+    monitor.start()
 
 
-def call(func, *args, **kwargs):
-  try:
-    return func(*args, **kwargs)
-  except NVMLError_NotSupported:
-    pass
-
-
-def get_versions():
-    return {
-      'driver_version': call(nvmlSystemGetDriverVersion).decode(),
-      'nvml_version': call(nvmlSystemGetNVMLVersion).decode()}
-
-
-def get_devices():
-    devices = {}
-    num_devices = nvmlDeviceGetCount()
-    for i in range(num_devices):
-        handle = nvmlDeviceGetHandleByIndex(i)
-        pci = call(nvmlDeviceGetPciInfo, handle)
-        minor = call(nvmlDeviceGetMinorNumber, handle)
-        name = call(nvmlDeviceGetName, handle).decode()
-        devices[minor] = {'name': name, 'handle': handle}
-    return devices
-
-
-devices = get_devices()
-
-
-def get_device_stats(handle):
-    util = call(nvmlDeviceGetUtilizationRates, handle)
-    mem = call(nvmlDeviceGetMemoryInfo, handle)
-    return {
-        'temperature': call(nvmlDeviceGetTemperature, handle, NVML_TEMPERATURE_GPU),
-        'gpu_utilization': util.gpu,
-        'mem_free': mem.free,
-        'mem_total': mem.total,
-        'mem_used': mem.used,
-        'mem_utilization': util.memory,
-        'fan_speed': call(nvmlDeviceGetFanSpeed, handle)}
-   
-
-
-class ContainerMonitor(threading.Thread):
+class GPUMonitor(threading.Thread):
     
     def __init__(self, monitors, stats_queue):
-        super(ContainerMonitor, self).__init__()
+        super(GPUMonitor, self).__init__()
         self.monitors = monitors
         self.stop = False
         self.stats_queue = stats_queue
         self.daemon = True
         
-
     def run(self):
         while True:
             time.sleep(1)
             for gpu_m, (c_id, gpu_in_c) in self.monitors.items():
                handle = devices[gpu_m]['handle']
-               stats = get_device_stats(handle)
+               stats = nvml.get_device_stats(handle)
                print(c_id, gpu_in_c, stats)
 
 
@@ -95,13 +56,6 @@ def get_container_gpus(container_id):
     return gpus
 
 
-
-monitors = {}
-container_stats = queue.Queue()
-monitor = ContainerMonitor(monitors, container_stats)
-monitor.start()
-
-
 def monitor_containers(container_ids, container_stats, stop_others=False):
     if stop_others:
         others = set(current_threads.keys()) - set(container_ids)
@@ -118,12 +72,13 @@ def monitor_containers(container_ids, container_stats, stop_others=False):
 if __name__ == '__main__':
     import queue
     import sys
-    print(get_versions())
+    print(nvml.get_versions())
     logging.basicConfig(stream=sys.stdout, level=logging.INFO)
     if len(sys.argv) == 2:
         containers = [sys.argv[1]]
     else:
         containers = [docker_client.containers.list()[0].id]
+    container_stats = queue.Queue()
     monitor_containers(containers, container_stats)
     time.sleep(10)
     stop_container_monitors(containers)

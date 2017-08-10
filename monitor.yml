@@ -27,6 +27,8 @@ spec:
           valueFrom:
             fieldRef:
               fieldPath: spec.nodeName
+        - name: AMQP_URL
+          value: amqp://rabbitmq-service:30567
         volumeMounts:
         - name: dev-monitoring
           mountPath: /app

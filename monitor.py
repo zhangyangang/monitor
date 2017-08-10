@@ -5,44 +5,53 @@ import time
 import queue
 from k8s import ContainerWatch, ContainerEvent
 import docker_stats
-
-# from https://github.com/NVIDIA/nvidia-docker/wiki/GPU-isolation
-# "If the device minor number is N, the device file is simply /dev/nvidiaN"
-
-# on startup, initialize map from device name -> nvml handle
-# for new containers, check for mapped devices
-# add new containers to list of reports
-# for each report each second, query cpu, mem, gpu stats
-# remove reports from containers
-
-container_events = queue.Queue()
-container_stats = queue.Queue()
+from amqp import AMQPWrapper
+import sysinfo
 
 logger = logging.getLogger(__name__)
-
-# configuring logger
 logging.basicConfig(stream=sys.stdout, level=logging.INFO)
-
 nodename = os.environ.get('NODENAME')
+amqp_url = os.environ.get('AMQP_URL')
 namespace = "riseml"
 label_selector = "role=train"
 field_selector =  'spec.nodeName=%s' % nodename
 
-pod_watch = ContainerWatch(namespace, label_selector, field_selector, container_events)            
-pod_watch.start()
-gpu_containers = set()
+def send_stats(connection, stats):
+    channel = connection.channel()
+    channel.queue_declare(queue=scheduler_topic)
+    channel.basic_publish('',
+                        scheduler_topic,
+                        json.dumps(start_request),
+                        pika.BasicProperties(content_type='text/plain',
+                                            delivery_mode=1))
 
-while True:
-    while not container_events.empty():
-        msg = container_events.get()
-        logger.info(msg)       
-        for event, ev_containers in msg.items():
-            if event == ContainerEvent.RUNNING:
-                containers = ev_containers
-                docker_stats.monitor_containers(ev_containers, container_stats, stop_others=True)
-            elif event == ContainerEvent.STOPPED:
-                docker_stats.stop_container_monitors(ev_containers)
-            elif event == ContainerEvent.STARTED:
-                docker_stats.monitor_containers(ev_containers, container_stats)
-        logger.info(containers)
-pod_watch.join()
+
+if __name__ == '__main__':
+    print(sysinfo.get_system_info())
+    container_events = queue.Queue()
+    container_stats = queue.Queue()
+    pod_watch = ContainerWatch(namespace, label_selector, field_selector, container_events)
+    pod_watch.start()
+    amqp = AMQPWrapper(amqp_url)
+    max_messages_loop = 100
+    while True:
+        while not container_events.empty():
+            msg = container_events.get()
+            for event, ev_containers in msg.items():
+                if event == ContainerEvent.RUNNING:
+                    docker_stats.monitor_containers(ev_containers, container_stats, stop_others=True)
+                elif event == ContainerEvent.STOPPED:
+                    docker_stats.stop_container_monitors(ev_containers)
+                elif event == ContainerEvent.STARTED:
+                    docker_stats.monitor_containers(ev_containers, container_stats)
+        messages_sent = 0
+        while not container_stats.empty():
+            stats = container_stats.get()
+            send_stats(connection, stats)
+            messages_sent += 1           
+            # interrupt sending messages so we can consume container events
+            if messages_sent == max_messages_loop:
+                break
+        if messages_sent == 0:
+            time.sleep(1)
+    pod_watch.join()

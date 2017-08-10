@@ -1,3 +1,5 @@
 nvidia-ml-py3
 kubernetes
 docker
+pika
+retrying

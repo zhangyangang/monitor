@@ -65,6 +65,7 @@ class ContainerWatch(threading.Thread):
         self.stopped = set()
         self.queue = queue
         self.running = set()
+        self.client = get_client()
 
     def run(self):
         while True:
@@ -82,8 +83,7 @@ class ContainerWatch(threading.Thread):
     def watch(self, resource_version):
         logger.info("Start watching pods %s in namespace %s" % (self.label_selector, self.namespace))
         w = watch.Watch()
-        client = get_client()
-        for event in w.stream(client.list_namespaced_pod,
+        for event in w.stream(self.client.list_namespaced_pod,
                               namespace=self.namespace, _request_timeout=200,
                               timeout_seconds=200, resource_version=resource_version,
                               field_selector=self.field_selector,
