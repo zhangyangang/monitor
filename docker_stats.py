@@ -3,6 +3,7 @@ import time
 import docker
 import logging
 import threading
+import urllib3
 
 logger = logging.getLogger(__name__)
 docker_client = docker.from_env(version="auto", timeout=5)
@@ -17,19 +18,29 @@ class ContainerMonitor(threading.Thread):
         self.job_id = job_id
         self.stop = False
         self.stats_queue = stats_queue
+        self.daemon = True
         
 
     def run(self):
         logger.info("Start monitoring container %s" % self.container.id)
-        stats_stream = self.container.stats(decode=True, stream=True)
-        for s in stats_stream:
-            if self.stop:
-                logger.info("Stopped monitoring container %s" % self.container.id)
-                break
-            cpu_percent, percpu_percent = calculate_cpu_percent(s)
-            memory_usage = int(s['memory_stats']['usage'])
-            memory_limit = int(s['memory_stats']['limit'])
-            logger.info("%s: %s %s %s %s" % (self.container.id, cpu_percent, memory_usage, memory_limit, percpu_percent))
+        try:
+            stats_stream = self.container.stats(decode=True, stream=True)
+            for s in stats_stream:
+                if self.stop:
+                    break
+                cpu_percent, percpu_percent = calculate_cpu_percent(s)
+                memory_usage = int(s['memory_stats']['usage'])
+                memory_limit = int(s['memory_stats']['limit'])
+                self.stats_queue.put((self.job_id, 
+                                    {'cpu_percent': cpu_percent, 
+                                    'memory_usage': memory_usage, 
+                                    'memory_limit': memory_limit, 
+                                    'percpu_percent': percpu_percent}))
+        except urllib3.exceptions.ReadTimeoutError:
+            pass
+        finally:
+            logger.info("Stopped monitoring container %s" % self.container.id)
+                                      
 
 
 # according to: https://github.com/moby/moby/blob/eb131c5383db8cac633919f82abad86c99bffbe5/cli/command/container/stats_helpers.go#L175-L188
@@ -61,13 +72,13 @@ def monitor_containers(container_ids, container_stats, stop_others=False):
     if stop_others:
         others = set(current_threads.keys()) - set(container_ids)
         for o in others:
-            o.stop = True
-        current_threads.clear()
-    for c_id in container_ids:
-        if c_id not in current_threads:
-            monitor = ContainerMonitor(c_id, container_stats)
+            current_threads[o].stop = True
+            del current_threads[o]
+    for c_id, job_id in container_ids:
+        if (c_id, job_id) not in current_threads:
+            monitor = ContainerMonitor(c_id, job_id, container_stats)
             monitor.start()
-            current_threads[c_id] = monitor
+            current_threads[(c_id, job_id)] = monitor
 
 
 if __name__ == '__main__':

@@ -3,6 +3,7 @@ import logging
 import sys
 import threading
 import os
+import time
 from kubernetes.client.rest import ApiException
 from urllib3.exceptions import HTTPError
 logger = logging.getLogger(__name__)
@@ -29,10 +30,11 @@ def get_container_states(pods, container_name='job'):
                 if container_status.name != container_name:
                     continue
                 container_id = normalize_container_id(str(container_status.container_id))
+                job_id = pod.metadata.labels['job_id']
                 if container_status.state.running is not None:
-                    running.add(container_id)
+                    running.add((container_id, job_id))
                 else:
-                    stopped.add(container_id)
+                    stopped.add((container_id, job_id))
     return running, stopped
 
 
@@ -74,18 +76,20 @@ class ContainerWatch(threading.Thread):
                                                             self.field_selector)
                 self.queue.put({ContainerEvent.RUNNING: self.running.copy()})
                 self.watch(rv)
-                time.sleep(0.5)
             except (ApiException, HTTPError) as e:
                 logger.info("K8S connection error %s" % e)
                 logger.info("Reconnecting to API...")
                 time.sleep(1)
+            finally:
+                logger.info("Restart watching for pods...")
+                
 
     def watch(self, resource_version):
         logger.info("Start watching pods %s in namespace %s" % (self.label_selector, self.namespace))
         w = watch.Watch()
         for event in w.stream(self.client.list_namespaced_pod,
-                              namespace=self.namespace, _request_timeout=200,
-                              timeout_seconds=200, resource_version=resource_version,
+                              namespace=self.namespace, _request_timeout=10,
+                              timeout_seconds=3600, resource_version=resource_version,
                               field_selector=self.field_selector,
                               label_selector=self.label_selector):
                 pod = event['object']

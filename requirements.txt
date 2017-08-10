@@ -3,3 +3,4 @@ kubernetes
 docker
 pika
 retrying
+urllib3

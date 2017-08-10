@@ -57,16 +57,15 @@ def get_container_gpus(container_id):
 
 
 def monitor_containers(container_ids, container_stats, stop_others=False):
-    if stop_others:
-        others = set(current_threads.keys()) - set(container_ids)
-        for o in others:
-            o.stop = True
-        current_threads.clear()
-    for c_id in container_ids:
+    new_monitors = {}
+    for c_id, job_id in container_ids:
         gpus = get_container_gpus(c_id)
         for gpu_m, gpu_in_c in gpus:
-            if gpu_m not in monitors:
-                monitors[gpu_m] = (c_id, gpu_in_c)
+            new_monitors[gpu_m] = (c_id, job_id, gpu_in_c)
+    if stop_others:
+        monitors = new_monitors
+    else:
+        monitors.update(new_monitors)
 
 
 if __name__ == '__main__':
