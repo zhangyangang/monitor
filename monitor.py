@@ -5,6 +5,7 @@ import time
 import queue
 import json
 import pika
+import nvml
 from k8s import ContainerWatch, ContainerEvent
 import docker_stats
 from amqp import AMQPWrapper
@@ -14,9 +15,13 @@ import threading
 logger = logging.getLogger(__name__)
 nodename = os.environ.get('NODENAME')
 amqp_url = os.environ.get('AMQP_URL')
+api_url = os.environ.get('RISEML_API_URL')
+api_key = os.environ.get('RISEML_APIKEY')
+
 namespace = "riseml"
 label_selector = "role=train"
 field_selector =  'spec.nodeName=%s' % nodename
+current_node_info = {}
 
 def send_stats(channel, stats):
     job_id, job_stats = stats
@@ -30,6 +35,38 @@ def send_stats(channel, stats):
                                                           delivery_mode=1))
 
 
+def update_node_info():
+    global current_node_info
+    sys_info = sysinfo.get_system_info()
+    nvidia_versions = nvml.get_versions()
+    nvidia_devices = nvml.get_devices()
+    gpus = []
+    for dev_name, dev_info in nvidia_devices.items():
+        gpus.append{'name': dev_info['name'],
+                    'mem': dev_info['mem_total'],
+                    'serial': dev_info['serial'],
+                    'device': dev_name}
+    update = {'name': nodename,
+              'nvidia_driver': nvidia_versions['driver_version'],
+              'cpu_model': sys_info['cpu_model'],
+              'mem': sys_info['mem_total'],
+              'gpus': gpus}
+    if current_node_info == update:
+        logger.info('Node information did not change. Skipping update to server.')
+        return
+    try:
+        logger.info("Updating node info.")
+        headers = {'Authorization': api_key}
+        headers.update({ 'Content-Type': 'application/json' })
+        res = requests.put('%s/nodes' % (API_SERVER),
+                            headers=headers,
+                            json=update)
+        res.raise_for_status()
+        current_node_info = update
+    except (ConnectionError, HTTPError) as err:
+         logger.warn("RiseML API connection error %s" % err)
+
+
 if __name__ == '__main__':
     logging.basicConfig(stream=sys.stdout, level=logging.INFO)    
     container_events = queue.Queue()
@@ -39,6 +76,8 @@ if __name__ == '__main__':
     amqp = AMQPWrapper(amqp_url)
     channel = amqp.connection.channel()
     max_messages_loop = 100
+    last_node_update = 0
+    node_udpate_interval_s = 120
     while True:
         while not container_events.empty():
             msg = container_events.get()
@@ -59,4 +98,6 @@ if __name__ == '__main__':
                 break
         if messages_sent == 0:
             time.sleep(0.1)
+        if time.time() - last_node_update > node_udpate_interval_s:
+            update_node_info()
     pod_watch.join()

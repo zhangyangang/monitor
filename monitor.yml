@@ -29,6 +29,10 @@ spec:
               fieldPath: spec.nodeName
         - name: AMQP_URL
           value: amqp://rabbitmq-service:30567
+        - name: RISEML_API_URL
+          value: http://riseml-api-service:3000
+        - name: RISEML_API_KEY
+          value: admin_key
         volumeMounts:
         - name: dev-monitoring
           mountPath: /app

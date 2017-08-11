@@ -46,7 +46,7 @@ def get_devices():
                                           'name': name, 
                                           'handle': handle, 
                                           'serial': serial, 
-                                          'memory': mem.total}
+                                          'mem_total': mem.total}
     return devices
 
 
