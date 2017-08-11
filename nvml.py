@@ -42,7 +42,11 @@ def get_devices():
         serial = call(nvmlDeviceGetSerial, handle)
         name = call(nvmlDeviceGetName, handle).decode()
         mem = call(nvmlDeviceGetMemoryInfo, handle)
-        devices[minor] = {'name': name, 'handle': handle, 'serial': serial, 'memory': mem.total}
+        devices['/dev/nvidia' + minor] = {'minor': minor, 
+                                          'name': name, 
+                                          'handle': handle, 
+                                          'serial': serial, 
+                                          'memory': mem.total}
     return devices
 
 
@@ -56,5 +60,6 @@ def get_device_stats(handle):
             'mem_total': mem.total,
             'mem_used': mem.used,
             'mem_utilization': util.memory,
-            'fan_speed': call(nvmlDeviceGetFanSpeed, handle)
+            'fan_speed': call(nvmlDeviceGetFanSpeed, handle),
+            'host_device': int(call(nvmlDeviceGetMinorNumber, handle))
             }

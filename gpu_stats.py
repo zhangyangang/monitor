@@ -10,13 +10,8 @@ import nvml
 logger = logging.getLogger(__name__)
 docker_client = docker.from_env(version="auto", timeout=5)
 monitors = {}
+monitor_thread = None
 devices = nvml.get_devices()
-
-
-def start(container_stats):
-    global monitors
-    monitor = GPUMonitor(monitors, container_stats)
-    monitor.start()
 
 
 class GPUMonitor(threading.Thread):
@@ -29,20 +24,20 @@ class GPUMonitor(threading.Thread):
         self.daemon = True
         
     def run(self):
-        while True:
+        while not self.stop:
+            for gpu_m, (c_id, job_id, gpu_in_c) in self.monitors.items():
+                handle = devices[gpu_m]['handle']
+                stats = nvml.get_device_stats(handle)
+                self.stats_queue.put((job_id, {gpu_in_c: stats}))
             time.sleep(1)
-            for gpu_m, (c_id, gpu_in_c) in self.monitors.items():
-               handle = devices[gpu_m]['handle']
-               stats = nvml.get_device_stats(handle)
-               print(c_id, gpu_in_c, stats)
 
 
 def stop_container_monitors(container_ids):
-    for c_id in container_ids:
+    for c_id, job_id in container_ids:
         gpus = get_container_gpus(c_id)
-        for gpu_m, gpu_in_c in gpus:
-            if gpu_m in monitors:
-                del monitors[gpu_m]
+        for gpu_in_h, gpu_in_c in gpus:
+            if gpu_in_h in monitors:
+                del monitors[gpu_in_h]
             else:
                 logger.warn("Tried stopping non-existent container monitor: %s " % c_id)
 
@@ -52,16 +47,21 @@ def get_container_gpus(container_id):
     devices = docker_client.api.inspect_container(container_id)['HostConfig']['Devices']
     for dev in devices:
         if re.match(r'/dev/nvidia[0-9]+', dev['PathOnHost']):
-            gpus.append((int(dev['PathOnHost'][len('/dev/nvidia'):]), dev['PathInContainer']))
+            gpus.append((dev['PathOnHost'], dev['PathInContainer']))
     return gpus
 
 
 def monitor_containers(container_ids, container_stats, stop_others=False):
+    global monitors
+    global monitor_thread
+    if monitor_thread is None:
+        monitor_thread = GPUMonitor(monitors, container_stats)
+        monitor_thread.start()
     new_monitors = {}
     for c_id, job_id in container_ids:
         gpus = get_container_gpus(c_id)
-        for gpu_m, gpu_in_c in gpus:
-            new_monitors[gpu_m] = (c_id, job_id, gpu_in_c)
+        for gpu_in_h, gpu_in_c in gpus:
+            new_monitors[gpu_in_h] = (c_id, job_id, gpu_in_c)
     if stop_others:
         monitors = new_monitors
     else:
