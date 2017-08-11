@@ -58,12 +58,12 @@ def update_node_info():
         logger.info("Updating node info.")
         headers = {'Authorization': api_key}
         headers.update({ 'Content-Type': 'application/json' })
-        res = requests.put('%s/nodes' % (API_SERVER),
+        res = requests.put('%s/nodes' % (api_url),
                             headers=headers,
                             json=update)
         res.raise_for_status()
         current_node_info = update
-    except (ConnectionError, HTTPError) as err:
+    except (requests.ConnectionError, requests.HTTPError) as err:
          logger.warn("RiseML API connection error %s" % err)
 
 
@@ -77,7 +77,7 @@ if __name__ == '__main__':
     channel = amqp.connection.channel()
     max_messages_loop = 100
     last_node_update = 0
-    node_udpate_interval_s = 120
+    node_udpate_interval_s = 10
     while True:
         while not container_events.empty():
             msg = container_events.get()
@@ -100,4 +100,5 @@ if __name__ == '__main__':
             time.sleep(0.1)
         if time.time() - last_node_update > node_udpate_interval_s:
             update_node_info()
+            last_node_update = time.time()
     pod_watch.join()

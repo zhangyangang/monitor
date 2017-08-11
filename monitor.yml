@@ -31,7 +31,7 @@ spec:
           value: amqp://rabbitmq-service:30567
         - name: RISEML_API_URL
           value: http://riseml-api-service:3000
-        - name: RISEML_API_KEY
+        - name: RISEML_APIKEY
           value: admin_key
         volumeMounts:
         - name: dev-monitoring
