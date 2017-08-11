@@ -4,3 +4,4 @@ docker
 pika
 retrying
 urllib3
+requests

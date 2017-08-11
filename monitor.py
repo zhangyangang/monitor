@@ -4,13 +4,13 @@ import os
 import time
 import queue
 import json
+import requests
 import pika
 import nvml
 from k8s import ContainerWatch, ContainerEvent
 import docker_stats
 from amqp import AMQPWrapper
 import sysinfo
-import threading
 
 logger = logging.getLogger(__name__)
 nodename = os.environ.get('NODENAME')
@@ -42,12 +42,12 @@ def update_node_info():
     nvidia_devices = nvml.get_devices()
     gpus = []
     for dev_name, dev_info in nvidia_devices.items():
-        gpus.append{'name': dev_info['name'],
-                    'mem': dev_info['mem_total'],
-                    'serial': dev_info['serial'],
-                    'device': dev_name}
+        gpus.append({'name': dev_info['name'],
+                     'mem': dev_info['mem_total'],
+                     'serial': dev_info['serial'],
+                     'device': dev_name})
     update = {'name': nodename,
-              'nvidia_driver': nvidia_versions['driver_version'],
+              'nvidia_driver': nvidia_versions.get('driver_version', 'NOT FOUND'),
               'cpu_model': sys_info['cpu_model'],
               'mem': sys_info['mem_total'],
               'gpus': gpus}
