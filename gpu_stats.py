@@ -76,7 +76,7 @@ if __name__ == '__main__':
     if len(sys.argv) == 2:
         containers = [sys.argv[1]]
     else:
-        containers = [docker_client.containers.list()[0].id]
+        containers = [(docker_client.containers.list()[0].id, 123)]
     container_stats = queue.Queue()
     monitor_containers(containers, container_stats)
     time.sleep(10)

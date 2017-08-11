@@ -6,7 +6,7 @@ logger = logging.getLogger(__name__)
 try:
     nvmlInit()
 except NVMLError_LibraryNotFound:
-    logger.warn("Couldn't initialize NVML library")
+    logger.warn("Couldn't initialize NVML library. Will not report GPU stats.")
 
 
 def call(func, *args, **kwargs):
@@ -42,11 +42,11 @@ def get_devices():
         serial = call(nvmlDeviceGetSerial, handle)
         name = call(nvmlDeviceGetName, handle).decode()
         mem = call(nvmlDeviceGetMemoryInfo, handle)
-        devices['/dev/nvidia' + minor] = {'minor': minor, 
-                                          'name': name, 
-                                          'handle': handle, 
-                                          'serial': serial, 
-                                          'mem_total': mem.total}
+        devices['/dev/nvidia' + str(minor)] = {'minor': minor, 
+                                               'name': name, 
+                                               'handle': handle, 
+                                               'serial': serial, 
+                                               'mem_total': int(mem.total)}
     return devices
 
 
