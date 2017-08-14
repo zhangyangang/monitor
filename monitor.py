@@ -46,23 +46,23 @@ def update_node_info():
                      'mem': dev_info['mem_total'],
                      'serial': dev_info['serial'],
                      'device': dev_name})
-    update = {'name': nodename,
-              'nvidia_driver': nvidia_versions.get('driver_version', 'NOT FOUND'),
-              'cpu_model': sys_info['cpu_model'],
-              'mem': sys_info['mem_total'],
-              'gpus': gpus}
-    if current_node_info == update:
+    new_info = {'name': nodename,
+                'nvidia_driver': nvidia_versions.get('driver_version', 'NOT FOUND'),
+                'cpu_model': sys_info['cpu_model'],
+                'mem': sys_info['mem_total'],
+                'gpus': gpus}
+    if current_node_info == new_info:
         logger.info('Node information did not change. Skipping update to server.')
         return
     try:
-        logger.info("Updating node info.")
+        logger.info("Updating node info: %s." % new_info)
         headers = {'Authorization': api_key}
         headers.update({ 'Content-Type': 'application/json' })
         res = requests.put('%s/nodes' % (api_url),
                             headers=headers,
-                            json=update)
+                            json=new_info)
         res.raise_for_status()
-        current_node_info = update
+        current_node_info = new_info
     except (requests.ConnectionError, requests.HTTPError) as err:
          logger.warn("RiseML API connection error %s" % err)
 
