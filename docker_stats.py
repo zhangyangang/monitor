@@ -31,11 +31,13 @@ class ContainerMonitor(threading.Thread):
                 cpu_percent, percpu_percent = calculate_cpu_percent(s)
                 memory_usage = int(s['memory_stats']['usage'])
                 memory_limit = int(s['memory_stats']['limit'])
+                millis = int(round(time.time() * 1000))                
                 self.stats_queue.put((self.job_id, 
-                                    {'cpu_percent': cpu_percent, 
-                                    'memory_usage': memory_usage, 
-                                    'memory_limit': memory_limit, 
-                                    'percpu_percent': percpu_percent}))
+                                     {'timestamp': millis,
+                                      'cpu_percent': cpu_percent, 
+                                      'memory_usage': memory_usage, 
+                                      'memory_limit': memory_limit, 
+                                      'percpu_percent': percpu_percent}))
         except urllib3.exceptions.ReadTimeoutError:
             pass
         finally:

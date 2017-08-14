@@ -38,8 +38,8 @@ def get_devices():
     for i in range(num_devices):
         handle = nvmlDeviceGetHandleByIndex(i)
         pci = call(nvmlDeviceGetPciInfo, handle)
-        minor = call(nvmlDeviceGetMinorNumber, handle)
-        serial = call(nvmlDeviceGetSerial, handle)
+        minor = int(call(nvmlDeviceGetMinorNumber, handle))
+        serial = call(nvmlDeviceGetSerial, handle).decode()
         name = call(nvmlDeviceGetName, handle).decode()
         mem = call(nvmlDeviceGetMemoryInfo, handle)
         devices['/dev/nvidia' + str(minor)] = {'minor': minor, 
