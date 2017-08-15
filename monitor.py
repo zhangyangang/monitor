@@ -9,6 +9,7 @@ import pika
 import nvml
 from k8s import ContainerWatch, ContainerEvent
 import docker_stats
+import gpu_stats
 from amqp import AMQPWrapper
 import sysinfo
 
@@ -23,10 +24,11 @@ label_selector = "role=train"
 field_selector =  'spec.nodeName=%s' % nodename
 current_node_info = {}
 
+
 def send_stats(channel, stats):
     job_id, job_stats = stats
     logger.info('sending stats for job %s: %s' % (job_id, job_stats))
-    stats_queue = 'utilization-%s' % job_id
+    stats_queue = 'monitor-%s' % job_id
     channel.queue_declare(queue=stats_queue)
     channel.basic_publish(exchange='',
                           routing_key=stats_queue,
@@ -69,6 +71,7 @@ def update_node_info():
 
 if __name__ == '__main__':
     logging.basicConfig(stream=sys.stdout, level=logging.INFO)    
+    logger.info("Docker client version: %s" % docker_stats.docker_client.version())
     container_events = queue.Queue()
     container_stats = queue.Queue()
     pod_watch = ContainerWatch(namespace, label_selector, field_selector, container_events)
@@ -77,17 +80,20 @@ if __name__ == '__main__':
     channel = amqp.connection.channel()
     max_messages_loop = 100
     last_node_update = 0
-    node_udpate_interval_s = 10
+    node_udpate_interval_s = 120
     while True:
         while not container_events.empty():
             msg = container_events.get()
             for event, ev_containers in msg.items():
                 if event == ContainerEvent.RUNNING:
                     docker_stats.monitor_containers(ev_containers, container_stats, stop_others=True)
+                    gpu_stats.monitor_containers(ev_containers, container_stats, stop_others=True)
                 elif event == ContainerEvent.STOPPED:
                     docker_stats.stop_container_monitors(ev_containers)
+                    gpu_stats.stop_container_monitors(ev_containers)
                 elif event == ContainerEvent.STARTED:
                     docker_stats.monitor_containers(ev_containers, container_stats)
+                    gpu_stats.monitor_containers(ev_containers, container_stats)
         messages_sent = 0
         while not container_stats.empty():
             stats = container_stats.get()

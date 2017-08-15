@@ -19,18 +19,21 @@ class GPUMonitor(threading.Thread):
     def __init__(self, monitors, stats_queue):
         super(GPUMonitor, self).__init__()
         self.monitors = monitors
+        self.devices = nvml.get_devices()
         self.stop = False
         self.stats_queue = stats_queue
         self.daemon = True
         
     def run(self):
+        logger.info("Start watching GPU statistics")
         while not self.stop:
             for gpu_m, (c_id, job_id, gpu_in_c) in self.monitors.items():
-                handle = devices[gpu_m]['handle']
+                handle = self.devices[gpu_m]['handle']
                 stats = nvml.get_device_stats(handle)
                 millis = int(round(time.time() * 1000))
                 self.stats_queue.put((job_id, {'timestamp': millis, gpu_in_c: stats}))
             time.sleep(1)
+        logger.info("Stopped watching GPU statistics")
 
 
 def stop_container_monitors(container_ids):
@@ -63,10 +66,10 @@ def monitor_containers(container_ids, container_stats, stop_others=False):
         gpus = get_container_gpus(c_id)
         for gpu_in_h, gpu_in_c in gpus:
             new_monitors[gpu_in_h] = (c_id, job_id, gpu_in_c)
+            logger.info("Monitoring GPU stats for container: %s" % c_id)
     if stop_others:
-        monitors = new_monitors
-    else:
-        monitors.update(new_monitors)
+        monitors.clear()
+    monitors.update(new_monitors)
 
 
 if __name__ == '__main__':

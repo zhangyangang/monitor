@@ -6,7 +6,7 @@ import threading
 import urllib3
 
 logger = logging.getLogger(__name__)
-docker_client = docker.from_env(version="auto", timeout=5)
+docker_client = docker.from_env(version="auto", timeout=10)
 current_threads = dict()
 
 
@@ -20,10 +20,9 @@ class ContainerMonitor(threading.Thread):
         self.stats_queue = stats_queue
         self.daemon = True
         
-
     def run(self):
         logger.info("Start monitoring container %s" % self.container.id)
-        try:
+        def monitor():
             stats_stream = self.container.stats(decode=True, stream=True)
             for s in stats_stream:
                 if self.stop:
@@ -38,11 +37,16 @@ class ContainerMonitor(threading.Thread):
                                       'memory_usage': memory_usage, 
                                       'memory_limit': memory_limit, 
                                       'percpu_percent': percpu_percent}))
-        except urllib3.exceptions.ReadTimeoutError:
-            pass
+        try:
+            monitor()
+        except urllib3.exceptions.ReadTimeoutError as e:
+            logger.error('Timeout waiting for stats. Restarting monitoring: %s' % str(e))
+            monitor()
+        except Exception as e:
+            logger.error('Error monitoring: %s' % str(e))
+            raise(e)
         finally:
             logger.info("Stopped monitoring container %s" % self.container.id)
-                                      
 
 
 # according to: https://github.com/moby/moby/blob/eb131c5383db8cac633919f82abad86c99bffbe5/cli/command/container/stats_helpers.go#L175-L188

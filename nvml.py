@@ -11,9 +11,11 @@ except NVMLError_LibraryNotFound:
 
 def call(func, *args, **kwargs):
   try:
-    return func(*args, **kwargs)
+      return func(*args, **kwargs)
   except NVMLError_NotSupported:
-    pass
+      pass
+  except NVMLError:
+      pass
 
 
 def get_versions():
@@ -50,13 +52,28 @@ def get_devices():
     return devices
 
 
+def get_power_stats(handle):
+    power_draw = None
+    power_limit = None
+    try:
+        nvmlDeviceGetPowerManagementMode(handle)
+        power_draw = int(call(nvmlDeviceGetPowerUsage, handle) / 1000)
+        power_limit = int(call(nvmlDeviceGetPowerManagementLimit, handle) / 1000)
+    except NVMLError:
+        pass
+    return {'draw': power_draw, 'limit': power_limit}
+
+
 def get_device_stats(handle):
     util = call(nvmlDeviceGetUtilizationRates, handle)
     mem = call(nvmlDeviceGetMemoryInfo, handle)
+    power = get_power_stats(handle)
     return {
             'temperature': call(nvmlDeviceGetTemperature, handle, NVML_TEMPERATURE_GPU),
             'gpu_utilization': util.gpu,
             'mem_free': mem.free,
+            'power_draw': power['draw'],
+            'power_limit': power['limit'],
             'mem_total': mem.total,
             'mem_used': mem.used,
             'mem_utilization': util.memory,

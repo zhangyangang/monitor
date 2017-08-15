@@ -57,7 +57,6 @@ def get_client():
 
 class ContainerWatch(threading.Thread):
     
-
     def __init__(self, namespace, label_selector, field_selector, queue):
         super(ContainerWatch, self).__init__()
         self.namespace = namespace
@@ -83,12 +82,11 @@ class ContainerWatch(threading.Thread):
             finally:
                 logger.info("Restart watching for pods...")
                 
-
     def watch(self, resource_version):
         logger.info("Start watching pods %s in namespace %s" % (self.label_selector, self.namespace))
         w = watch.Watch()
         for event in w.stream(self.client.list_namespaced_pod,
-                              namespace=self.namespace, _request_timeout=10,
+                              namespace=self.namespace, _request_timeout=500,
                               timeout_seconds=3600, resource_version=resource_version,
                               field_selector=self.field_selector,
                               label_selector=self.label_selector):
@@ -105,11 +103,13 @@ class ContainerWatch(threading.Thread):
         just_stopped = now_stopped & self.running
         msg = {}
         if just_started:
-            logger.info("Now started: %s" % just_started)
+            for c_id, job_id in just_started:
+                logger.info("Container %s started for job %s" % (c_id, job_id))
             self.running = self.running | just_started
             msg[ContainerEvent.STARTED] = just_started.copy()
         if just_stopped:
-            logger.info("Now stopped: %s" % just_stopped)
+            for c_id, job_id in just_stopped:
+                logger.info("Container %s stopped for job %s" % (c_id, job_id))
             self.running = self.running - just_stopped
             msg[ContainerEvent.STOPPED] = just_stopped.copy()
         if msg:
