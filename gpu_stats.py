@@ -58,7 +58,7 @@ def get_container_gpus(container_id):
 def monitor_containers(container_ids, container_stats, stop_others=False):
     global monitors
     global monitor_thread
-    if monitor_thread is None:
+    if monitor_thread is None and nvml.nvml_initialized:
         monitor_thread = GPUMonitor(monitors, container_stats)
         monitor_thread.start()
     new_monitors = {}

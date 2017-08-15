@@ -2,9 +2,11 @@ from pynvml import *
 import logging
 
 logger = logging.getLogger(__name__)
+nvml_initialized = False
 
 try:
     nvmlInit()
+    nvml_initialized = True
 except NVMLError_LibraryNotFound:
     logger.warn("Couldn't initialize NVML library. Will not report GPU stats.")
 
@@ -20,12 +22,13 @@ def call(func, *args, **kwargs):
 
 def get_versions():
     versions = {}
-    try:
-      versions = {'driver_version': call(nvmlSystemGetDriverVersion).decode(),
-                  'nvml_version': call(nvmlSystemGetNVMLVersion).decode()
-                  }
-    except NVMLError_Uninitialized:
-        pass
+    if nvml_initialized:
+        try:
+        versions = {'driver_version': call(nvmlSystemGetDriverVersion).decode(),
+                    'nvml_version': call(nvmlSystemGetNVMLVersion).decode()
+                    }
+        except NVMLError_Uninitialized:
+            pass
     return versions
 
 
