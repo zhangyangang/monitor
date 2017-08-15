@@ -25,16 +25,17 @@ field_selector =  'spec.nodeName=%s' % nodename
 current_node_info = {}
 
 
-def send_stats(channel, stats):
+def send_stats(amqp, stats):
     job_id, job_stats = stats
     logger.info('sending stats for job %s: %s' % (job_id, job_stats))
     stats_queue = 'monitor-%s' % job_id
+    channel = amqp.get_channel()
     channel.queue_declare(queue=stats_queue)
     channel.basic_publish(exchange='',
-                          routing_key=stats_queue,
-                          body=json.dumps(job_stats),
-                          properties=pika.BasicProperties(content_type='text/plain',
-                                                          delivery_mode=1))
+                        routing_key=stats_queue,
+                        body=json.dumps(job_stats),
+                        properties=pika.BasicProperties(content_type='text/plain',
+                                                        delivery_mode=1))
 
 
 def update_node_info():
@@ -77,7 +78,6 @@ if __name__ == '__main__':
     pod_watch = ContainerWatch(namespace, label_selector, field_selector, container_events)
     pod_watch.start()
     amqp = AMQPWrapper(amqp_url)
-    channel = amqp.connection.channel()
     max_messages_loop = 100
     last_node_update = 0
     node_udpate_interval_s = 120
@@ -97,7 +97,7 @@ if __name__ == '__main__':
         messages_sent = 0
         while not container_stats.empty():
             stats = container_stats.get()
-            send_stats(channel, stats)
+            send_stats(amqp, stats)
             messages_sent += 1           
             # interrupt sending messages so we can consume container events
             if messages_sent == max_messages_loop:
