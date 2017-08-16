@@ -24,9 +24,10 @@ def get_versions():
     versions = {}
     if nvml_initialized:
         try:
-        versions = {'driver_version': call(nvmlSystemGetDriverVersion).decode(),
-                    'nvml_version': call(nvmlSystemGetNVMLVersion).decode()
-                    }
+            versions = {
+                'driver_version': call(nvmlSystemGetDriverVersion).decode(),
+                'nvml_version': call(nvmlSystemGetNVMLVersion).decode()
+            }
         except NVMLError_Uninitialized:
             pass
     return versions
