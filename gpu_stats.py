@@ -31,7 +31,8 @@ class GPUMonitor(threading.Thread):
                 handle = self.devices[gpu_m]['handle']
                 stats = nvml.get_device_stats(handle)
                 millis = int(round(time.time() * 1000))
-                self.stats_queue.put((job_id, {'timestamp': millis, gpu_in_c: stats}))
+                self.stats_queue.put((job_id, {'timestamp': millis, 
+                                               'gpus': {gpu_in_c: stats}}))
             time.sleep(1)
         logger.info("Stopped watching GPU statistics")
 
