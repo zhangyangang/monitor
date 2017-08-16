@@ -21,7 +21,7 @@ api_key = os.environ.get('RISEML_APIKEY')
 
 namespace = "riseml"
 label_selector = "role=train"
-field_selector =  'spec.nodeName=%s' % nodename
+field_selector = 'spec.nodeName=%s' % nodename
 current_node_info = {}
 
 
@@ -29,14 +29,16 @@ def send_stats(amqp, stats):
     job_id, job_stats = stats
     logger.info('sending stats for job %s: %s' % (job_id, job_stats))
     stats['job_id'] = job_id
-    stats_queue = 'monitor-%s' % job_id
+    stats_exchange = 'monitor-%s' % job_id
     channel = amqp.get_channel()
-    channel.queue_declare(queue=stats_queue)
-    channel.basic_publish(exchange='',
-                        routing_key=stats_queue,
-                        body=json.dumps(job_stats),
-                        properties=pika.BasicProperties(content_type='text/plain',
-                                                        delivery_mode=1))
+    channel.exchange_declare(exchange=stats_exchange,
+                             type='fanout', durable=False)
+
+    channel.basic_publish(exchange=stats_exchange,
+                          routing_key='',
+                          body=json.dumps(job_stats),
+                          properties=pika.BasicProperties(content_type='text/plain',
+                                                          delivery_mode=1))
 
 
 def update_node_info():
