@@ -28,12 +28,11 @@ current_node_info = {}
 def send_stats(amqp, stats):
     job_id, job_stats = stats
     logger.info('sending stats for job %s: %s' % (job_id, job_stats))
-    stats['job_id'] = job_id
+    job_stats['job_id'] = job_id
     stats_exchange = 'monitor-%s' % job_id
     channel = amqp.get_channel()
     channel.exchange_declare(exchange=stats_exchange,
                              type='fanout', durable=False)
-
     channel.basic_publish(exchange=stats_exchange,
                           routing_key='',
                           body=json.dumps(job_stats),
