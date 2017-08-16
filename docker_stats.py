@@ -28,13 +28,13 @@ class ContainerMonitor(threading.Thread):
                 if self.stop:
                     break
                 cpu_percent, percpu_percent = calculate_cpu_percent(s)
-                memory_usage = int(s['memory_stats']['usage'])
+                memory_used = int(s['memory_stats']['usage'])
                 memory_limit = int(s['memory_stats']['limit'])
                 millis = int(round(time.time() * 1000))                
                 self.stats_queue.put((self.job_id, 
                                      {'timestamp': millis,
                                       'cpu_percent': cpu_percent, 
-                                      'memory_usage': memory_usage, 
+                                      'memory_used': memory_used, 
                                       'memory_limit': memory_limit, 
                                       'percpu_percent': percpu_percent}))
         try:
