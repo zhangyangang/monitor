@@ -54,7 +54,8 @@ def update_node_info():
     new_info = {'name': nodename,
                 'nvidia_driver': nvidia_versions.get('driver_version', 'NOT FOUND'),
                 'cpu_model': sys_info['cpu_model'],
-                'mem': sys_info['mem_total'],
+                'memory': sys_info['memory_total'],
+                'cpus': sys_info['num_cores'],
                 'gpus': gpus}
     if current_node_info == new_info:
         logger.info('Node information did not change. Skipping update to server.')

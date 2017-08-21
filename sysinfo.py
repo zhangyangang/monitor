@@ -27,7 +27,7 @@ def get_system_info():
     mem_total = get_mem_total()
     return {'num_cores': n_cores,
             'cpu_model': cpu_model,
-            'mem_total': mem_total}
+            'memory_total': mem_total}
 
 
 if __name__ == '__main__':
