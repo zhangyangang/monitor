@@ -72,9 +72,11 @@ def get_device_stats(handle):
     util = call(nvmlDeviceGetUtilizationRates, handle)
     mem = call(nvmlDeviceGetMemoryInfo, handle)
     power = get_power_stats(handle)
+    name = call(nvmlDeviceGetName, handle).decode()
     return {
             'temperature': call(nvmlDeviceGetTemperature, handle, NVML_TEMPERATURE_GPU),
             'gpu_utilization': util.gpu,
+            'name': name,
             'memory_free': mem.free,
             'power_draw': power['draw'],
             'power_limit': power['limit'],
