@@ -7,8 +7,8 @@ nvml_initialized = False
 try:
     nvmlInit()
     nvml_initialized = True
-except NVMLError_LibraryNotFound:
-    logger.warn("Couldn't initialize NVML library. Will not report GPU stats.")
+except (NVMLError_LibraryNotFound, NVMLError_Unknown) as e:
+    logger.warn("Couldn't initialize NVML library (%s). Will not report GPU stats." % str(e))
 
 
 def call(func, *args, **kwargs):

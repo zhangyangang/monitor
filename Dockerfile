@@ -1,4 +1,4 @@
-FROM nvidia/cuda
+FROM nvidia/cuda:8.0-runtime
 ENV DEBIAN_FRONTEND noninteractive
 
 RUN apt-get -y update && \

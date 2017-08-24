@@ -8,11 +8,14 @@ DRIVER_TARGET=/usr/local/nvidia
 
 # DRIVER_DIR is a symlink
 if [ -L $MNT_DRIVER_DIR ]; then
-    TARGET=$(readlink $MNT_DRIVER_DIR)
-    MNT_TARGET=${MNT_DIR}${TARGET}
-    echo Found driver in $MNT_TARGET
-    ln -s $MNT_TARGET $DRIVER_TARGET
+    DRIVER=$(cd $MNT_DRIVER_DIR; pwd -P)
+    echo Found driver in $DRIVER
+    ln -s $DRIVER $DRIVER_TARGET
 else
    echo No driver found
 fi
+
+export PATH=/usr/local/nvidia/bin:/usr/local/cuda/bin:${PATH}
+export LD_LIBRARY_PATH=/usr/local/nvidia/lib:/usr/local/nvidia/lib64
+
 python3 ${CURRENT_DIR}/monitor.py

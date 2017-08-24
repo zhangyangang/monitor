@@ -30,14 +30,18 @@ def send_stats(amqp, stats):
     job_stats['job_id'] = job_id
     logger.info('sending stats for job %s: %s' % (job_id, job_stats))
     stats_exchange = 'monitor-%s' % job_id
-    channel = amqp.get_channel()
-    channel.exchange_declare(exchange=stats_exchange,
-                             type='fanout', durable=False)
-    channel.basic_publish(exchange=stats_exchange,
-                          routing_key='',
-                          body=json.dumps(job_stats),
-                          properties=pika.BasicProperties(content_type='text/plain',
-                                                          delivery_mode=1))
+    try:
+        channel = amqp.get_channel()
+        channel.exchange_declare(exchange=stats_exchange,
+                                type='fanout', durable=False)
+        channel.basic_publish(exchange=stats_exchange,
+                            routing_key='',
+                            body=json.dumps(job_stats),
+                            properties=pika.BasicProperties(content_type='text/plain',
+                                                            delivery_mode=1))
+    except pika.exceptions.ConnectionClosed as e:
+        logger.info('Reconnecting amqp..')
+        amqp.reconnect()
 
 
 def update_node_info():
