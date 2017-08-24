@@ -4,6 +4,7 @@ import docker
 import logging
 import threading
 import urllib3
+import socket
 
 logger = logging.getLogger(__name__)
 docker_client = docker.from_env(version="auto", timeout=10)
@@ -39,9 +40,8 @@ class ContainerMonitor(threading.Thread):
                                       'percpu_percent': percpu_percent}))
         try:
             monitor()
-        except urllib3.exceptions.ReadTimeoutError as e:
-            logger.error('Timeout waiting for stats. Restarting monitoring: %s' % str(e))
-            monitor()
+        except (urllib3.exceptions.ReadTimeoutError, socket.timeout) as e:
+            logger.error('Timeout waiting for stats. Maybe container was stopped: %s' % str(e))
         except Exception as e:
             logger.error('Error monitoring: %s' % str(e))
             raise(e)
