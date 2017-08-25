@@ -1,9 +1,8 @@
 #!/bin/bash
 
 CURRENT_DIR=$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )
-DRIVER_DIR=/var/lib/nvidia-docker/volumes/nvidia_driver/latest
 MNT_DIR=/host
-MNT_DRIVER_DIR=${MNT_DIR}${DRIVER_DIR}
+MNT_DRIVER_DIR=${MNT_DIR}${NVIDIA_DRIVER_DIR}
 DRIVER_TARGET=/usr/local/nvidia
 
 # DRIVER_DIR is a symlink

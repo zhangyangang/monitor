@@ -10,6 +10,7 @@ RUN curl -sSO https://bootstrap.pypa.io/get-pip.py && \
 
 COPY requirements.txt /app/requirements.txt
 RUN pip install -r /app/requirements.txt
+ENV NVIDIA_DRIVER_DIR /var/lib/nvidia-docker/volumes/nvidia_driver/latest
 
 COPY . /app/
 CMD /app/start.sh

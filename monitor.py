@@ -87,7 +87,7 @@ if __name__ == '__main__':
     amqp = AMQPWrapper(amqp_url)
     max_messages_loop = 100
     last_node_update = 0
-    node_udpate_interval_s = 120
+    node_udpate_interval_s = int(os.environ.get('UPDATE_INTERVAL_SEC', 600))
     while True:
         while not container_events.empty():
             msg = container_events.get()
