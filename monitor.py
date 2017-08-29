@@ -61,9 +61,10 @@ def update_node_info():
                 'memory': sys_info['memory_total'],
                 'cpus': sys_info['num_cores'],
                 'gpus': gpus}
-    if current_node_info == new_info:
-        logger.info('Node information did not change. Skipping update to server.')
-        return
+    # disable check for now
+    #if current_node_info == new_info:
+    #    logger.info('Node information did not change. Skipping update to server.')
+    #    return
     try:
         logger.info("Updating node info: %s." % new_info)
         headers = {'Authorization': api_key}
