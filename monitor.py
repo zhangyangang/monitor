@@ -33,12 +33,12 @@ def send_stats(amqp, stats):
     try:
         channel = amqp.get_channel()
         channel.exchange_declare(exchange=stats_exchange,
-                                type='fanout', durable=False)
+                                 exchange_type='fanout', durable=False)
         channel.basic_publish(exchange=stats_exchange,
-                            routing_key='',
-                            body=json.dumps(job_stats),
-                            properties=pika.BasicProperties(content_type='text/plain',
-                                                            delivery_mode=1))
+                              routing_key='',
+                              body=json.dumps(job_stats),
+                              properties=pika.BasicProperties(content_type='text/plain',
+                                                              delivery_mode=1))
     except pika.exceptions.ConnectionClosed as e:
         logger.info('Reconnecting amqp..')
         amqp.reconnect()
