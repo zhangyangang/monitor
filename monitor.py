@@ -20,7 +20,7 @@ api_url = os.environ.get('RISEML_API_URL')
 api_key = os.environ.get('RISEML_APIKEY')
 
 namespace = "riseml"
-label_selector = "role=train"
+label_selector = "kind=batch"
 field_selector = 'spec.nodeName=%s' % nodename
 current_node_info = {}
 
