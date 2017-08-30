@@ -30,14 +30,18 @@ def send_stats(amqp, stats):
     job_stats['job_id'] = job_id
     logger.info('sending stats for job %s: %s' % (job_id, job_stats))
     stats_exchange = 'monitor-%s' % job_id
-    channel = amqp.get_channel()
-    channel.exchange_declare(exchange=stats_exchange,
-                             type='fanout', durable=False)
-    channel.basic_publish(exchange=stats_exchange,
-                          routing_key='',
-                          body=json.dumps(job_stats),
-                          properties=pika.BasicProperties(content_type='text/plain',
-                                                          delivery_mode=1))
+    try:
+        channel = amqp.get_channel()
+        channel.exchange_declare(exchange=stats_exchange,
+                                type='fanout', durable=False)
+        channel.basic_publish(exchange=stats_exchange,
+                            routing_key='',
+                            body=json.dumps(job_stats),
+                            properties=pika.BasicProperties(content_type='text/plain',
+                                                            delivery_mode=1))
+    except pika.exceptions.ConnectionClosed as e:
+        logger.info('Reconnecting amqp..')
+        amqp.reconnect()
 
 
 def update_node_info():
@@ -57,9 +61,10 @@ def update_node_info():
                 'memory': sys_info['memory_total'],
                 'cpus': sys_info['num_cores'],
                 'gpus': gpus}
-    if current_node_info == new_info:
-        logger.info('Node information did not change. Skipping update to server.')
-        return
+    # disable check for now
+    #if current_node_info == new_info:
+    #    logger.info('Node information did not change. Skipping update to server.')
+    #    return
     try:
         logger.info("Updating node info: %s." % new_info)
         headers = {'Authorization': api_key}
@@ -83,7 +88,7 @@ if __name__ == '__main__':
     amqp = AMQPWrapper(amqp_url)
     max_messages_loop = 100
     last_node_update = 0
-    node_udpate_interval_s = 120
+    node_udpate_interval_s = int(os.environ.get('UPDATE_INTERVAL_SEC', 600))
     while True:
         while not container_events.empty():
             msg = container_events.get()

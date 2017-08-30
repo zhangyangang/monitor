@@ -26,6 +26,9 @@ class AMQPWrapper():
             )
             logger.info('Successfully connected to AMQP')
         self.connection = connection
+
+    def reconnect(self):
+        self._init_connection
     
     def ensure_connection(self):
         if self.connection is None or self.connection.is_closed:
