@@ -35,8 +35,8 @@ class GPUMonitor(threading.Thread):
                                                   dev['name'])
                     gpus_stats[gpu_in_c] = stats
                 millis = int(round(time.time() * 1000))
-                gpus_stats['timestamp'] = millis
-                self.stats_queue.put((job_id, gpus_stats))
+                self.stats_queue.put((job_id, {'timestamp': millis, 
+                                               'gpus': {gpus_stats}}))
             time.sleep(1)
         logger.info("Stopped watching GPU statistics")
 
