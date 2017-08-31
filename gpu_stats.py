@@ -27,24 +27,26 @@ class GPUMonitor(threading.Thread):
     def run(self):
         logger.info("Start watching GPU statistics")
         while not self.stop:
-            for gpu_m, (c_id, job_id, gpu_in_c) in self.monitors.items():
-                handle = self.devices[gpu_m]['handle']
-                stats = nvml.get_device_stats(handle)
+            for c_id, (job_id, gpus) in self.monitors.items():
+                gpus_stats = {}
+                for gpu_in_h, gpu_in_c in gpus:
+                    dev = self.devices[gpu_in_h]
+                    stats = nvml.get_device_stats(dev['handle'], dev['index'],
+                                                  dev['name'])
+                    gpus_stats[gpu_in_c] = stats
                 millis = int(round(time.time() * 1000))
-                self.stats_queue.put((job_id, {'timestamp': millis, 
-                                               'gpus': {gpu_in_c: stats}}))
+                gpus_stats['timestamp'] = millis
+                self.stats_queue.put((job_id, gpus_stats))
             time.sleep(1)
         logger.info("Stopped watching GPU statistics")
 
 
 def stop_container_monitors(container_ids):
-    for c_id, job_id in container_ids:
-        gpus = get_container_gpus(c_id)
-        for gpu_in_h, gpu_in_c in gpus:
-            if gpu_in_h in monitors:
-                del monitors[gpu_in_h]
-            else:
-                logger.warn("Tried stopping non-existent container monitor: %s " % c_id)
+    for c_id, _ in container_ids:
+        if c_id in monitors:
+            del monitors[c_id]
+        else:
+            logger.warn("Tried stopping non-existent container monitor: %s " % c_id)
 
 
 def get_container_gpus(container_id):
@@ -65,8 +67,8 @@ def monitor_containers(container_ids, container_stats, stop_others=False):
     new_monitors = {}
     for c_id, job_id in container_ids:
         gpus = get_container_gpus(c_id)
-        for gpu_in_h, gpu_in_c in gpus:
-            new_monitors[gpu_in_h] = (c_id, job_id, gpu_in_c)
+        if gpus:
+            new_monitors[c_id] = (job_id, gpus)
             logger.info("Monitoring GPU stats for container: %s" % c_id)
     if stop_others:
         monitors.clear()
