@@ -48,7 +48,7 @@ def get_devices():
         serial = call(nvmlDeviceGetSerial, handle).decode()
         name = call(nvmlDeviceGetName, handle).decode()
         mem = call(nvmlDeviceGetMemoryInfo, handle)
-        index = int(call(nvmlDeviceGetIndex, handle))       
+        index = int(call(nvmlDeviceGetIndex, handle))   
         devices['/dev/nvidia' + str(minor)] = {'minor': minor, 
                                                'name': name, 
                                                'index': index,
