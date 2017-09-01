@@ -13,4 +13,4 @@ RUN pip install -r /app/requirements.txt
 ENV NVIDIA_DRIVER_DIR /var/lib/nvidia-docker/volumes/nvidia_driver/latest
 
 COPY . /app/
-CMD /app/start.sh
+CMD python3 app/monitor.py
