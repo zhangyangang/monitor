@@ -31,7 +31,7 @@ class GPUMonitor(threading.Thread):
                 gpus_stats = {}
                 for gpu_in_h, gpu_in_c in gpus:
                     dev = self.devices[gpu_in_h]
-                    stats = nvml.get_device_stats(dev['handle'], dev['index'],
+                    stats = nvml.get_device_stats(dev['handle'], dev['bus_id'],
                                                   dev['name'])
                     gpus_stats[gpu_in_c] = stats
                 millis = int(round(time.time() * 1000))
@@ -80,12 +80,14 @@ if __name__ == '__main__':
     import sys
     print(nvml.get_versions())
     logging.basicConfig(stream=sys.stdout, level=logging.INFO)
-    if len(sys.argv) == 2:
-        containers = [sys.argv[1]]
-    else:
-        containers = [(docker_client.containers.list()[0].id, 123)]
     container_stats = queue.Queue()
-    monitor_containers(containers, container_stats)
-    time.sleep(10)
-    stop_container_monitors(containers)
-    time.sleep(2)
+    monitor_thread = GPUMonitor(monitors, container_stats)   
+    monitor_thread.start()
+    monitors['container_id'] = ('test_job', [('/dev/nvidia0', '/dev/nvidia0')])
+    for _ in range(10):
+        try:
+            stats = container_stats.get(block=False)
+            print(json.dumps(stats, indent=2))
+        except queue.Empty:
+            pass
+        time.sleep(1)

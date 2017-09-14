@@ -51,7 +51,7 @@ def get_devices():
         index = int(call(nvmlDeviceGetIndex, handle))   
         devices['/dev/nvidia' + str(minor)] = {'minor': minor, 
                                                'name': name, 
-                                               'index': index,
+                                               'bus_id': pci.busId.decode('utf-8'),
                                                'handle': handle, 
                                                'serial': serial, 
                                                'mem_total': int(mem.total)}
@@ -70,21 +70,21 @@ def get_power_stats(handle):
     return {'draw': power_draw, 'limit': power_limit}
 
 
-def get_device_stats(handle, index, name):
+def get_device_stats(handle, bus_id, name):
     util = call(nvmlDeviceGetUtilizationRates, handle)
     mem = call(nvmlDeviceGetMemoryInfo, handle)
     power = get_power_stats(handle)
     return {
+            'name': name,
+            'device_bus_id': bus_id,
+            'device_minor': int(call(nvmlDeviceGetMinorNumber, handle)),
             'temperature': call(nvmlDeviceGetTemperature, handle, NVML_TEMPERATURE_GPU),
             'gpu_utilization': util.gpu,
-            'index': index,
-            'name': name,
             'memory_free': mem.free,
             'power_draw': power['draw'],
             'power_limit': power['limit'],
             'memory_total': mem.total,
             'memory_used': mem.used,
             'memory_utilization': util.memory,
-            'fan_speed': call(nvmlDeviceGetFanSpeed, handle),
-            'host_device': int(call(nvmlDeviceGetMinorNumber, handle))
+            'fan_speed': call(nvmlDeviceGetFanSpeed, handle)
             }

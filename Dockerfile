@@ -12,6 +12,7 @@ COPY requirements.txt /app/requirements.txt
 RUN pip install -r /app/requirements.txt
 ENV NVIDIA_DRIVER_DIR /var/lib/nvidia-docker/volumes/nvidia_driver/latest
 ENV LD_LIBRARY_PATH /usr/local/nvidia/lib64:/usr/local/nvidia/lib
+LABEL com.nvidia.volumes.needed="nvidia_driver"
 
 COPY . /app/
 CMD python3 app/monitor.py

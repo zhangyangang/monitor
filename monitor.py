@@ -74,13 +74,16 @@ def update_node_info():
                             json=new_info)
         res.raise_for_status()
         current_node_info = new_info
+        return True
     except (requests.ConnectionError, requests.HTTPError) as err:
          logger.warn("RiseML API connection error %s" % err)
+         return False
 
 
 if __name__ == '__main__':
     logging.basicConfig(stream=sys.stdout, level=logging.INFO)    
     logger.info("Docker client version: %s" % docker_stats.docker_client.version())
+    logger.info("GPUs: %s" % nvml.get_devices())
     container_events = queue.Queue()
     container_stats = queue.Queue()
     pod_watch = ContainerWatch(namespace, label_selector, field_selector, container_events)
@@ -88,7 +91,8 @@ if __name__ == '__main__':
     amqp = AMQPWrapper(amqp_url)
     max_messages_loop = 100
     last_node_update = 0
-    node_udpate_interval_s = int(os.environ.get('UPDATE_INTERVAL_SEC', 600))
+    node_udpate_interval_s = int(os.environ.get('INITIAL_UPDATE_INTERVAL_SEC', 10))
+    
     while True:
         while not container_events.empty():
             msg = container_events.get()
@@ -113,6 +117,8 @@ if __name__ == '__main__':
         if messages_sent == 0:
             time.sleep(0.1)
         if time.time() - last_node_update > node_udpate_interval_s:
-            update_node_info()
+            updated = update_node_info()
             last_node_update = time.time()
+            if updated:
+                node_udpate_interval_s = int(os.environ.get('UPDATE_INTERVAL_SEC', 1800))
     pod_watch.join()
