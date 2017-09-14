@@ -86,7 +86,7 @@ class ContainerWatch(threading.Thread):
         logger.info("Start watching pods %s in namespace %s" % (self.label_selector, self.namespace))
         w = watch.Watch()
         for event in w.stream(self.client.list_namespaced_pod,
-                              namespace=self.namespace, _request_timeout=500,
+                              namespace=self.namespace, _request_timeout=1800,
                               timeout_seconds=3600, resource_version=resource_version,
                               field_selector=self.field_selector,
                               label_selector=self.label_selector):
