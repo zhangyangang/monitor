@@ -25,12 +25,19 @@ class ContainerMonitor(threading.Thread):
         logger.info("Start monitoring container %s" % self.container.id)
         def monitor():
             stats_stream = self.container.stats(decode=True, stream=True)
-            for s in stats_stream:
+            for n, s in enumerate(stats_stream):
                 if self.stop:
                     break
-                cpu_percent, percpu_percent = calculate_cpu_percent(s)
-                memory_used = int(s['memory_stats']['usage'])
-                memory_limit = int(s['memory_stats']['limit'])
+                # first stats don't contain all info
+                if n == 0:
+                    continue   
+                try:
+                    cpu_percent, percpu_percent = calculate_cpu_percent(s)
+                    memory_used = int(s['memory_stats']['usage'])
+                    memory_limit = int(s['memory_stats']['limit'])
+                except Exception as e:
+                    logger.exception('Docker sent malformed stats: %s' % str(e))
+                    continue
                 millis = int(round(time.time() * 1000))                
                 self.stats_queue.put((self.job_id, 
                                      {'timestamp': millis,
@@ -43,8 +50,8 @@ class ContainerMonitor(threading.Thread):
         except (urllib3.exceptions.ReadTimeoutError, socket.timeout) as e:
             logger.error('Timeout waiting for stats. Maybe container was stopped: %s' % str(e))
         except Exception as e:
-            logger.error('Error monitoring: %s' % str(e))
-            raise(e)
+            logger.exception('Error in monitoring: %s' % str(e))
+            #raise(e)
         finally:
             logger.info("Stopped monitoring container %s" % self.container.id)
 
