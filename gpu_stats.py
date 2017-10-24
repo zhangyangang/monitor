@@ -49,7 +49,8 @@ class GPUMonitor(threading.Thread):
 def stop_container_monitors(container_ids):
     for c_id, _ in container_ids:
         if c_id in monitors:
-            del monitors[c_id]
+            with monitors_lock:
+                del monitors[c_id]
         else:
             logger.warn("Tried stopping non-existent container monitor: %s " % c_id)
 
@@ -66,11 +67,11 @@ def get_container_gpus(container_id):
 def monitor_containers(container_ids, container_stats, stop_others=False):
     global monitors
     global monitor_thread
-    if monitor_thread is None and nvml.nvml_initialized:
-        monitor_thread = GPUMonitor(monitors, container_stats)
-        monitor_thread.start()
-    else:
-        if not monitor_thread.is_alive():
+    if nvml.nvml_initialized:
+        if monitor_thread is None:
+            monitor_thread = GPUMonitor(monitors, container_stats)
+            monitor_thread.start()
+        elif not monitor_thread.is_alive():
             logger.error('GPU monitor thread not running. Restarting...')
             monitor_thread = GPUMonitor(monitors, container_stats)
             monitor_thread.start()
@@ -82,7 +83,7 @@ def monitor_containers(container_ids, container_stats, stop_others=False):
             logger.info("Monitoring GPU stats for container: %s" % c_id)
     with monitors_lock:
         if stop_others:
-            monitors.clear()    
+            monitors.clear()
         monitors.update(new_monitors)
 
 
