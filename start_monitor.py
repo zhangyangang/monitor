@@ -3,8 +3,10 @@ import sys
 import os
 from monitor import loop
 
-log_level = logging.DEBUG if os.environ.get('DEBUG', '0') == '1' else logging.INFO 
-logging.basicConfig(stream=sys.stdout, level=log_level, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+log_level = logging.DEBUG if os.environ.get('DEBUG') == '1' else logging.INFO 
+log_format = '%(name)s - %(levelname)s - %(message)s'
+logging.basicConfig(stream=sys.stdout, level=log_level, format=log_format)
+
 logger = logging.getLogger(__name__)
 
 if __name__ == '__main__':
