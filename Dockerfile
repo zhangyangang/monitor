@@ -15,4 +15,6 @@ ENV LD_LIBRARY_PATH /usr/local/nvidia/lib64:/usr/local/nvidia/lib
 LABEL com.nvidia.volumes.needed="nvidia_driver"
 
 COPY . /app/
-CMD python3 app/monitor.py
+WORKDIR /app
+ENV PYTHONPATH /app
+CMD python3 monitor.py

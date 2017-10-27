@@ -50,7 +50,6 @@ def query_running_containers(namespace, label_selector, field_selector):
 
 def get_client():
     config.load_incluster_config()
-    #beta_api = client.ExtensionsV1beta1Api()
     v1_api = client.CoreV1Api()
     return v1_api
 

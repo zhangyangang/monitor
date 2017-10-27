@@ -5,7 +5,7 @@ import docker
 import logging
 import threading
 import re
-import nvml
+from . import nvml
 
 logger = logging.getLogger(__name__)
 docker_client = docker.from_env(version="auto", timeout=5)
