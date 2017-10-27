@@ -4,7 +4,7 @@ import os
 from monitor import loop
 
 log_level = logging.DEBUG if os.environ.get('DEBUG') == '1' else logging.INFO 
-log_format = '%(name)s - %(levelname)s - %(message)s'
+log_format = '%(levelname)s: %(message)s'
 logging.basicConfig(stream=sys.stdout, level=log_level, format=log_format)
 
 logger = logging.getLogger(__name__)
