@@ -17,4 +17,4 @@ LABEL com.nvidia.volumes.needed="nvidia_driver"
 COPY . /app/
 WORKDIR /app
 ENV PYTHONPATH /app
-CMD python3 monitor.py
+CMD python3 start_monitor.py
