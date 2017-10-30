@@ -7,5 +7,7 @@ AMQP_URL = os.environ.get('AMQP_URL')
 RISEML_API_URL = os.environ.get('RISEML_API_URL')
 RISEML_APIKEY = os.environ.get('RISEML_APIKEY')
 NAMESPACE = "riseml"
-LABEL_SELECTOR = "kind=batch"
-FIELD_SELECTOR = 'spec.nodeName=%s' % NODENAME
+
+ENVIRONMENT = os.environ.get('ENVIRONMENT', 'development')
+ROLLBAR_ENDPOINT = os.environ.get('ROLLBAR_ENDPOINT', 'https://backend.riseml.com/errors/monitor/')
+CLUSTER_ID = os.environ.get('CLUSTER_ID')

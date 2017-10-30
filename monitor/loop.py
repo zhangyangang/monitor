@@ -76,7 +76,7 @@ def start():
     logger.info("GPUs: %s" % nvml.get_devices())
     container_events = queue.Queue()
     container_stats = queue.Queue()
-    pod_watch = ContainerWatch(config.NAMESPACE, config.LABEL_SELECTOR,
+    pod_watch = ContainerWatch(config.NAMESPACE, 'kind=batch',
                                'spec.nodeName=%s' % config.NODENAME,
                                container_events)
     pod_watch.start()
