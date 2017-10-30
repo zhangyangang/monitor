@@ -9,5 +9,6 @@ RISEML_APIKEY = os.environ.get('RISEML_APIKEY')
 NAMESPACE = "riseml"
 
 ENVIRONMENT = os.environ.get('ENVIRONMENT', 'development')
-ROLLBAR_ENDPOINT = os.environ.get('ROLLBAR_ENDPOINT', 'https://backend.riseml.com/errors/monitor/')
+BACKEND_URL = os.environ.get('BACKEND_URL', 'https://backend.riseml.com')
+ROLLBAR_ENDPOINT = BACKEND_URL + '/errors/monitor/'
 CLUSTER_ID = os.environ.get('CLUSTER_ID')
