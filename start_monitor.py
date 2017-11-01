@@ -1,6 +1,7 @@
 import logging
 import sys
 import os
+import rollbar
 from monitor import loop, config
 
 log_level = logging.DEBUG if os.environ.get('DEBUG') == '1' else logging.INFO 
