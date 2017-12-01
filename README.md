@@ -3,6 +3,10 @@
 This component monitors new PODs on a node and publishes utilization stats of PODs to a queue.
 Using the NVML library it reports detailed GPU statistics like temperature and additional information like the used NVIDIA driver version and exact model and serial number of installed GPUs.
 
+## Environment Variables
+
+Please check [config.py](https://github.com/riseml/monitor/blob/master/monitor/config.py). It contains all environment variables used.
+
 ## Published Node Information
 
 The following information is sent on startup:
